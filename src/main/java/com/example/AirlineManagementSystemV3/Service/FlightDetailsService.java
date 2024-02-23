@@ -14,8 +14,14 @@ import org.springframework.stereotype.Service;
 
 import com.example.AirlineManagementSystemV3.entity.BookedSeats;
 import com.example.AirlineManagementSystemV3.entity.Flight;
+import com.example.AirlineManagementSystemV3.entity.Passenger;
+import com.example.AirlineManagementSystemV3.entity.Ticket;
 import com.example.AirlineManagementSystemV3.repository.BookedSeatsRepo;
 import com.example.AirlineManagementSystemV3.repository.FlightRepository;
+import com.example.AirlineManagementSystemV3.repository.PassengerRepo;
+import com.example.AirlineManagementSystemV3.repository.TicketRepo;
+
+import jakarta.transaction.Transactional;
 
 import java.util.Random;
 
@@ -27,19 +33,22 @@ import java.util.Scanner;
 //import com.demo.Seat;
 
 @Service
+@Transactional
 public class FlightDetailsService {
 
 	@Autowired
 	FlightRepository flightRepository;
 	@Autowired
 	BookedSeatsRepo bookedSeatsRepo;
-	// Seat seat = new Seat();
-	// PassengersDetails ps = new PassengersDetails();
-
+	@Autowired
+	PassengerRepo passengerRepo;
+	@Autowired
+	TicketRepo ticketrepo;
+	
 	static boolean validDate = false;
 	Scanner scanner = new Scanner(System.in);
 
-	public List<Flight> getAvailableFlights(String source, String destination, String dateofjourney) {
+	public List<Flight> getAvailableFlights(int userid,String source, String destination, String dateofjourney) {
 		System.out.println("***inside flight details service****");
 
 		String dayofweek = getDay(dateofjourney);
@@ -58,19 +67,23 @@ public class FlightDetailsService {
 						System.out.println("-----------------------------------------------------------------------------------");
 					});
 			System.out.println("Do you want to book tickets? (yes/no)");
-
-			String choice = scanner.nextLine().toLowerCase();
-
+			String choice = scanner.next().toLowerCase();
 			if (choice.equals("yes")) {
 				//flight ID and number of seats to book
 				System.out.println("Enter flight ID:");
 				int flightId = scanner.nextInt();
 				System.out.println("Enter number of seat(s):");
 				int numSeats = scanner.nextInt();
-
-				boolean booked = bookSeats(flightId, numSeats);
+				
+				
+				  
+				boolean booked = bookSeats(userid,flightId, numSeats,dateofjourney);
 				if (booked) {
+					
 					System.out.println("Tickets booked successfully!");
+					System.out.println("tickets booked by userid : "+userid);
+					List<Ticket> ticketlist=ticketrepo.findTicketbyuserid(userid);
+					System.out.println("ticketdetails"+ticketlist.toString());
 				} else {
 					System.out.println("Failed to book tickets. Please try again.");
 				}
@@ -115,26 +128,79 @@ public class FlightDetailsService {
 
 	}
 
-	public boolean bookSeats(int flightId, int numSeats) {
+	public boolean bookSeats(int userid,int flightId,int numSeats,String dateofjourney) {
 		Flight flight = flightRepository.findById(flightId);
 		if (flight != null) {
 			int availableSeats = flight.getAvailableSeats();
 			if (availableSeats >= numSeats) {
+				
 				List<Integer> bookedSeatNumbers = generateRandomSeatNumbers(numSeats, availableSeats);
+				String flightName=flightRepository.getFlightName(flightId);
+				System.out.println("flightName : "+flightName);
+				String start_time=flightRepository.getstartTime(flightId);
+				System.out.println("start_time : "+start_time);
+				String date_start_time=dateofjourney+" "+start_time;
+				String reach_time=flightRepository.getreachtTime(flightId);
+				String date_reach_time=dateofjourney+" "+reach_time;
+				System.out.println("reach_time : "+reach_time);
+				
                 for (int seatNumber : bookedSeatNumbers) {
+                	Passenger passenger=new Passenger();
+                	Ticket ticket=new Ticket();
+                	ticket.setNumberOfSeats(numSeats);
+                	ticket.setFlightId(flightId);
+                	ticket.setFlightName(flightName);
+                	ticket.setUserid(userid);
+                	ticket.setArrivaldayandTime(date_start_time);
+                	ticket.setDepartdayandTime(date_reach_time);
+                	ticket.setSeatNo(seatNumber);
+                	System.out.println(ticket);
                     //flight.addBookedSeat(seatNumber);
-                	
-                	System.out.println("SeatNo:"+seatNumber);/****booked seat number***/
+                	System.out.println("****enter passenger details : *****");
+                	System.out.println("enter firstname : ");
+                	String firstname=scanner.next();
+                	System.out.println("first name is : "+firstname);
+                	passenger.setFirstName(firstname);
+                	//ticket.setFirstName(firstname);
+                	System.out.println("enter lastname : ");
+                	String lastname=scanner.next();
+                	//ticket.setLastName(lastname);
+                	passenger.setLastName(lastname);
+                	System.out.println("enter email : ");
+                	String email=scanner.next();
+                	passenger.setEmail(email);
+                	//ticket.setEmail(email);
+                	System.out.println("enter phno : ");
+                	String phno=scanner.next();
+                
+                	//ticket.setPhone(phno);
+                	passenger.setPhone(phno);
+                	passenger.setFlightId(flightId);
+                	passenger.setSeatno(seatNumber);
+                	passenger.setUserId(userid);
+                	System.out.println(passenger);
+                	passengerRepo.save(passenger);
+                	ticket.setFirstName(firstname);
+                	ticket.setLastName(lastname);
+                	ticket.setEmail(email);
+                	ticket.setPhone(phno);
+                	ticketrepo.save(ticket);
+                	System.out.println("SeatNo:"+seatNumber+"for the passenger "+passenger.getFirstName());/****booked seat number***/
                 	BookedSeats bookedseats=new BookedSeats();
                 	bookedseats.setFlightID(flightId);
                 	bookedseats.setSeatNo(seatNumber);
                 	bookedseats.setUserId(1);
                 	bookedSeatsRepo.save(bookedseats);
                 	
+                	
                 }
 				flight.setAvailableSeats(availableSeats - numSeats);
 				flightRepository.save(flight);
+				
 				System.out.println(numSeats + " seat(s) booked successfully for flight " + flightId);
+				System.out.println("******generating tickets****");
+				System.out.println("******");
+				
 				return true;
 			} else {
 				System.out.println("Not enough available seat(s) for flight " + flightId);
@@ -156,5 +222,6 @@ public class FlightDetailsService {
         }
         return bookedSeatNumbers;
     }
+	
 	
 }

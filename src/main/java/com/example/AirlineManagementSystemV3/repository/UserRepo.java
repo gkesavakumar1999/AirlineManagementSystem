@@ -19,6 +19,10 @@ public interface UserRepo extends JpaRepository<User,Integer> {
 	
 	 @Procedure(procedureName ="verifyUsernameandpassword") 
 	 int verifyUsernameandpassword(String username,String password);
+	 
+	 
+	 @Procedure(procedureName ="verifyUserID") 
+	 int verifyUserID(int userID);
 	
 	/*
 	 * @Query(value =

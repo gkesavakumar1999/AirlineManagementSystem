@@ -18,6 +18,7 @@ public class User {
     private String password;
     private String gender;
     
+    
     public User(int userId, String username, String password, String gender) {
         this.userId = userId;
         this.username = username;
